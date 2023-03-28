@@ -83,6 +83,9 @@ class ForagingEnv(Env):
         sight,
         max_episode_steps,
         force_coop,
+        fixed_food_levels=None,
+        fixed_food_spawns=None,
+        randomise_spawn=True,
         normalize_reward=True,
         grid_observation=False,
         penalty=0.0,
@@ -100,7 +103,15 @@ class ForagingEnv(Env):
         self._food_spawned = 0.0
         self.max_player_level = max_player_level
         self.sight = sight
+        self.fixed_food_levels = fixed_food_levels
+        self.fixed_food_spawns = fixed_food_spawns
+        if self.fixed_food_levels is not None:
+            assert len(self.fixed_food_levels) == self.max_num_food, "fixed_food_levels if given must contain one level for each food"
+        if self.fixed_food_spawns is not None:
+            assert len(self.fixed_food_spawns) == self.max_num_food, "fixed_food_spawns if given must contain one location (pair of ints) for each food"
+            assert all([len(spawn) == 2 for spawn in self.fixed_food_spawns]), "fixed_food_spawns if given must contain one location (pair of ints) for each food"
         self.force_coop = force_coop
+        self.randomise_spawn = randomise_spawn
         self._game_over = None
 
         self._rendering_initialized = False
@@ -132,7 +143,10 @@ class ForagingEnv(Env):
             # field_size = field_x * field_y
 
             max_num_food = self.max_num_food
-            max_food_level = self.max_food_level if self.max_food_level else self.max_player_level * len(self.players)
+            if self.fixed_food_levels is not None:
+                max_food_level = max(self.fixed_food_levels)
+            else:
+                max_food_level = self.max_food_level if self.max_food_level else self.max_player_level * len(self.players)
 
             min_obs = [-1, -1, 0] * max_num_food + [-1, -1, 0] * len(self.players)
             max_obs = [field_x-1, field_y-1, max_food_level] * max_num_food + [
@@ -255,8 +269,22 @@ class ForagingEnv(Env):
 
         while food_count < max_num_food and attempts < 1000:
             attempts += 1
-            row = self.np_random.randint(1, self.rows - 1)
-            col = self.np_random.randint(1, self.cols - 1)
+            # create list of food locations which evenly spreads food in the grid
+            # from the center
+
+
+            if self.fixed_food_spawns is not None:
+                row, col = self.fixed_food_spawns[food_count]
+            elif self.randomise_spawn:
+                # spawn food randomly
+                row = self.np_random.randint(1, self.rows - 1)
+                col = self.np_random.randint(1, self.cols - 1)
+            else:
+                # spawn food in the center of the map
+                # randomise around center to be able to spawn multiple food
+                rand = attempts // 10
+                row = max(1, min(self.rows - 2, self.rows // 2 + self.np_random.randint(-rand, rand+1)))
+                col = max(1, min(self.cols - 2, self.cols // 2 + self.np_random.randint(-rand, rand+1)))
 
             # check if it has neighbors:
             if (
@@ -266,13 +294,15 @@ class ForagingEnv(Env):
             ):
                 continue
 
-            self.field[row, col] = (
-                min_level
-                if min_level == max_level
+            if self.fixed_food_levels is not None:
+                level = self.fixed_food_levels[food_count]
+            elif min_level == max_level:
+                level = min_level
+            else:
                 # ! this is excluding food of level `max_level` but is kept for
                 # ! consistency with prior LBF versions
-                else self.np_random.randint(min_level, max_level)
-            )
+                level = self.np_random.randint(min_level, max_level)
+            self.field[row, col] = level
             food_count += 1
         self._food_spawned = self.field.sum()
 
@@ -292,8 +322,27 @@ class ForagingEnv(Env):
             player.reward = 0
 
             while attempts < 1000:
-                row = self.np_random.randint(0, self.rows)
-                col = self.np_random.randint(0, self.cols)
+                if self.randomise_spawn:
+                    # spawn player randomly
+                    row = self.np_random.randint(0, self.rows)
+                    col = self.np_random.randint(0, self.cols)
+                else:
+                    # spawn players in corners
+                    rand = attempts // 10
+                    corners = [
+                        (0, 0),
+                        (0, self.cols - 1),
+                        (self.rows - 1, 0),
+                        (self.rows - 1, self.cols - 1),
+                    ]
+                    for row, col in corners:
+                        # add increasing small randomisation after 10+ attempts
+                        row = max(0, min(self.rows - 1, row + self.np_random.randint(-rand, rand+1)))
+                        col = max(0, min(self.cols - 1, col + self.np_random.randint(-rand, rand+1)))
+                        if self._is_empty_location(row, col):
+                            # found empty corner
+                            break
+
                 if self._is_empty_location(row, col):
                     player.setup(
                         (row, col),
