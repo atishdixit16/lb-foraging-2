@@ -10,6 +10,7 @@ from gym.utils import seeding
 import numpy as np
 
 
+
 class Action(Enum):
     NONE = 0
     NORTH = 1
