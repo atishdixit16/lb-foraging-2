@@ -602,23 +602,25 @@ class ForagingEnv(Env):
 
             adj_players = self.adjacent_players(frow, fcol)
 
-            # choose the adjacent players that are loading and follow same load logic
-            adj_players = [
+            # choose the adjacent players that are loading and follow same load logic (to get adj_player_level)
+            adj_players_logic = [
                 p for p in adj_players if (p in loading_players and p.load_logic == player.load_logic ) or p is player
             ]
 
-            adj_player_level = sum([a.level for a in adj_players])
+            adj_player_level = sum([a.level for a in adj_players_logic])
 
-            loading_players = loading_players - set(adj_players)
 
             if not player.load_logic(food,adj_player_level):
                 # failed to load
-                for a in adj_players:
+                for a in adj_players_logic:
                     a.reward -= self.penalty
+                
+                # remove loading players with same logic
+                loading_players = loading_players - set(adj_players_logic)
                 continue
 
             # else the food was loaded and each player scores points
-            for a in adj_players:
+            for a in adj_players_logic:
                 a.reward = float(a.level * food)
                 if self._normalize_reward:
                     a.reward = a.reward / float(
@@ -626,6 +628,12 @@ class ForagingEnv(Env):
                     )  # normalize reward
             # and the food is removed
             self.field[frow, fcol] = 0
+            
+            # remove all adjacent players that do not follow the same load logic
+            adj_players_all = [
+                p for p in adj_players if p in loading_players or p is player
+            ]
+            loading_players = loading_players - set(adj_players_all)
 
         self._game_over = (
             self.field.sum() == 0 or self._max_episode_steps <= self.current_step
