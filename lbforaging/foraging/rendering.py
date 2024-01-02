@@ -10,6 +10,7 @@ import numpy as np
 import math
 import six
 from gym import error
+import operator
 
 if "Apple" in sys.version:
     if "DYLD_FALLBACK_LIBRARY_PATH" in os.environ:
@@ -48,9 +49,13 @@ _BLACK = (0, 0, 0)
 _WHITE = (255, 255, 255)
 _GREEN = (0, 255, 0)
 _RED = (255, 0, 0)
+_BLUE = (0,0,255)
 
 _BACKGROUND_COLOR = _WHITE
 _GRID_COLOR = _BLACK
+_PLAYER_LT = _RED
+_PLAYER_LE = _GREEN
+_PLAYER_EQ = _BLUE
 
 
 def get_display(spec):
@@ -211,6 +216,7 @@ class Viewer(object):
         batch.draw()
         for p in env.players:
             self._draw_badge(*p.position, p.level)
+            self._draw_logic_badge(*p.position, p.level, p.load_logic)
 
     def _draw_badge(self, row, col, level):
         resolution = 6
@@ -241,5 +247,29 @@ class Viewer(object):
             anchor_x="center",
             anchor_y="center",
             color=(*_BLACK, 255),
+        )
+        label.draw()
+
+    def _draw_logic_badge(self, row, col, level, load_logic):
+
+        badge_x = col * (self.grid_size + 1) + (1 / 4) * (self.grid_size + 1)
+        badge_y = self.height - (self.grid_size + 1) * (row + 1) + (1 / 4) * (self.grid_size + 1)
+
+        if load_logic==operator.le:
+            label_str = '≤'
+        elif load_logic==operator.lt:
+            label_str = '<'
+        else:
+            label_str = '='
+        label = pyglet.text.Label(
+            label_str,
+            font_name="Times New Roman",
+            font_size=12,
+            bold=True,
+            x=badge_x,
+            y=badge_y + 2,
+            anchor_x="center",
+            anchor_y="center",
+            color=(*_WHITE, 255),
         )
         label.draw()

@@ -17,7 +17,7 @@ for s, p, f, mfl, c, po, pen in product(sizes, players, foods, max_food_level, c
             "players": p,
             "min_player_level": [3,3,3],
             "max_player_level": [3,3,3],
-            "player_load_logic": ['lt', 'lt', 'le'],
+            "player_load_logic": ['lt', 'eq', 'le'],
             "field_size": (s, s),
             "min_food_level": [1,2,3],
             "max_food_level": [1,2,3],
