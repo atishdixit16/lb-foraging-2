@@ -463,9 +463,10 @@ class ForagingEnv(Env):
                 obs[3 * i + 2] = observation.field[y, x]
 
             for i in range(len(self.players)):
-                obs[self.max_num_food * 3 + 3 * i] = -1
-                obs[self.max_num_food * 3 + 3 * i + 1] = -1
-                obs[self.max_num_food * 3 + 3 * i + 2] = 0
+                obs[self.max_num_food * 3 + 4 * i] = -1
+                obs[self.max_num_food * 3 + 4 * i + 1] = -1
+                obs[self.max_num_food * 3 + 4 * i + 2] = 0
+                obs[self.max_num_food * 3 + 4 * i + 3] = 2
 
             for i, p in enumerate(seen_players):
                 obs[self.max_num_food * 3 + 4 * i] = p.position[0]
