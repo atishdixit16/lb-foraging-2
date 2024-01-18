@@ -58,11 +58,11 @@ class Player:
         
     def get_load_logic_label(self):
         if self.load_logic == operator.le:
-            return 2
+            return [1, 1]
         if self.load_logic == operator.lt:
-            return 1
+            return [1, 0]
         if self.load_logic == operator.eq:
-            return 0
+            return [0, 1]
 
     def set_controller(self, controller):
         self.controller = controller
@@ -203,9 +203,9 @@ class ForagingEnv(Env):
 
             max_num_food = self.max_num_food
 
-            min_obs = [-1, -1, 0] * max_num_food + [-1, -1, 0, 0] * len(self.players)
+            min_obs = [-1, -1, 0] * max_num_food + [-1, -1, 0, 0, 0] * len(self.players)
             max_obs = [field_x-1, field_y-1, max_food_level] * max_num_food + [
-                field_x-1, field_y-1, max(self.max_player_level), 2
+                field_x-1, field_y-1, max(self.max_player_level), 1, 1
             ] * len(self.players)
         else:
             # grid observation space
@@ -463,16 +463,18 @@ class ForagingEnv(Env):
                 obs[3 * i + 2] = observation.field[y, x]
 
             for i in range(len(self.players)):
-                obs[self.max_num_food * 3 + 4 * i] = -1
-                obs[self.max_num_food * 3 + 4 * i + 1] = -1
-                obs[self.max_num_food * 3 + 4 * i + 2] = 0
-                obs[self.max_num_food * 3 + 4 * i + 3] = 2
+                obs[self.max_num_food * 3 + 5 * i] = -1
+                obs[self.max_num_food * 3 + 5 * i + 1] = -1
+                obs[self.max_num_food * 3 + 5 * i + 2] = 0
+                obs[self.max_num_food * 3 + 5 * i + 3] = 0
+                obs[self.max_num_food * 3 + 5 * i + 4] = 0
 
             for i, p in enumerate(seen_players):
-                obs[self.max_num_food * 3 + 4 * i] = p.position[0]
-                obs[self.max_num_food * 3 + 4 * i + 1] = p.position[1]
-                obs[self.max_num_food * 3 + 4 * i + 2] = p.level
-                obs[self.max_num_food * 3 + 4 * i + 3] = p.load_logic_label
+                obs[self.max_num_food * 3 + 5 * i] = p.position[0]
+                obs[self.max_num_food * 3 + 5 * i + 1] = p.position[1]
+                obs[self.max_num_food * 3 + 5 * i + 2] = p.level
+                obs[self.max_num_food * 3 + 5 * i + 3] = p.load_logic_label[0]
+                obs[self.max_num_food * 3 + 5 * i + 4] = p.load_logic_label[1]
 
             return obs
 
