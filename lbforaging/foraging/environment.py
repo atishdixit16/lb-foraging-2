@@ -4,6 +4,7 @@ from itertools import product
 import logging
 from typing import Iterable
 import operator
+from copy import deepcopy
 
 from gym import Env
 import gym
@@ -555,6 +556,76 @@ class ForagingEnv(Env):
 
         nobs, _, _, _ = self._make_gym_obs()
         return nobs
+    
+    def reward_function(self, actions):
+        players_copy =  deepcopy(self.players)
+
+        for p in players_copy:
+            p.reward = 0
+
+        actions = [ Action(a) for a in actions ]
+
+        # check if loading actions are valid
+        for i, (player, action) in enumerate(zip(players_copy, actions)):
+            if action == Action.LOAD:
+                if not self.adjacent_food(*player.position) > 0:
+                    actions[i] = Action.NONE
+
+        # process the loadings and compute rewards:
+        loading_players = set()
+
+        for player, action in zip(players_copy, actions):
+            if action == Action.LOAD:
+                loading_players.add(player)
+
+        
+        while loading_players:
+            # find adjacent food
+            player = loading_players.pop()
+            frow, fcol = self.adjacent_food_location(*player.position)
+            food = self.field[frow, fcol]
+
+            adj_players = [ player for player in players_copy
+                           if abs(player.position[0] - frow) == 1 and 
+                           player.position[1] == fcol or 
+                           abs(player.position[1] - fcol) == 1 and 
+                           player.position[0] == frow ]
+
+            # choose the adjacent players that are loading and follow same load logic (to get adj_player_level)
+            adj_players_logic = [
+                p for p in adj_players if (p in loading_players and p.load_logic == player.load_logic ) or p is player
+            ]
+
+            adj_player_level = sum([a.level for a in adj_players_logic])
+
+
+            if not player.load_logic(food,adj_player_level):
+                # failed to load
+                for a in adj_players_logic:
+                    a.reward -= self.penalty
+                
+                # remove loading players with same logic
+                loading_players = loading_players - set(adj_players_logic)
+                continue
+
+            # else the food was loaded and each player scores points
+            for a in adj_players_logic:
+                a.reward = float(a.level * food)
+                if self._normalize_reward:
+                    a.reward = a.reward / float(
+                        adj_player_level * self._food_spawned
+                    )  # normalize reward
+            
+            # remove all adjacent players that do not follow the same load logic
+            adj_players_all = [
+                p for p in adj_players if p in loading_players or p is player
+            ]
+            loading_players = loading_players - set(adj_players_all)
+        
+        return [player.reward for player in players_copy]
+
+
+
 
     def step(self, actions):
         self.current_step += 1
