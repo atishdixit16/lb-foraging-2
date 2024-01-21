@@ -1,10 +1,11 @@
 from collections import namedtuple, defaultdict
 from enum import Enum
-from itertools import product
+from itertools import product, combinations
 import logging
 from typing import Iterable
 import operator
-from copy import deepcopy
+from copy import copy, deepcopy
+from itertools import combinations
 
 from gym import Env
 import gym
@@ -557,24 +558,15 @@ class ForagingEnv(Env):
         nobs, _, _, _ = self._make_gym_obs()
         return nobs
     
-    def reward_function(self, actions):
-        players_copy =  deepcopy(self.players)
+    def compute_rewards(self, players, actions):
 
-        for p in players_copy:
+        for p in players:
             p.reward = 0
-
-        actions = [ Action(a) for a in actions ]
-
-        # check if loading actions are valid
-        for i, (player, action) in enumerate(zip(players_copy, actions)):
-            if action == Action.LOAD:
-                if not self.adjacent_food(*player.position) > 0:
-                    actions[i] = Action.NONE
 
         # process the loadings and compute rewards:
         loading_players = set()
 
-        for player, action in zip(players_copy, actions):
+        for player, action in zip(players, actions):
             if action == Action.LOAD:
                 loading_players.add(player)
 
@@ -585,7 +577,7 @@ class ForagingEnv(Env):
             frow, fcol = self.adjacent_food_location(*player.position)
             food = self.field[frow, fcol]
 
-            adj_players = [ player for player in players_copy
+            adj_players = [ player for player in players
                            if abs(player.position[0] - frow) == 1 and 
                            player.position[1] == fcol or 
                            abs(player.position[1] - fcol) == 1 and 
@@ -621,11 +613,49 @@ class ForagingEnv(Env):
                 p for p in adj_players if p in loading_players or p is player
             ]
             loading_players = loading_players - set(adj_players_all)
+
+        return [player.reward for player in players]
+    
+    def swap_players(self, swap, actions):
+        players_copy = deepcopy(self.players)
+        actions_copy = copy(actions)
+        actions_copy[swap[0]], actions_copy[swap[1]] = actions_copy[swap[1]], actions_copy[swap[0]] 
+        players_copy[swap[0]].position, players_copy[swap[1]].position = players_copy[swap[1]].position, players_copy[swap[0]].position 
+
+        return players_copy, actions_copy
+
+
+    
+    def reward_mapping_function(self, actions):
+        players_copy =  deepcopy(self.players)
+        actions = [ Action(a) for a in actions ]
+
+        # check if loading actions are valid
+        for i, (player, action) in enumerate(zip(players_copy, actions)):
+            if action == Action.LOAD:
+                if not self.adjacent_food(*player.position) > 0:
+                    actions[i] = Action.NONE
+
+        reward_array = np.zeros((len(players_copy), len(players_copy)))
+
+        # return zero reward when there is no loading
+        if Action.LOAD not in actions:
+            return reward_array
+
+        # diagonal values of reward_array are default reward values
+        r_list = self.compute_rewards(players_copy, actions)
+        for i,r in enumerate(r_list):
+            reward_array[i,i] = r
         
-        return [player.reward for player in players_copy]
+        # combination of agents' trajecory sharing for reward mapping
+        swap_combs = combinations(list(range(len(self.players))), 2)
+        for swap in swap_combs:
+            swapped_players, swapped_actions = self.swap_players(swap, actions)
+            r_list = self.compute_rewards(swapped_players, swapped_actions)
+            reward_array[swap[0], swap[1] ] = r_list[swap[0]]
+            reward_array[swap[1], swap[0] ] = r_list[swap[1]]
 
-
-
+        return reward_array
 
     def step(self, actions):
         self.current_step += 1
