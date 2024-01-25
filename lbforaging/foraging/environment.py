@@ -159,8 +159,10 @@ class ForagingEnv(Env):
             # check if min_player_level is less than max_player_level for each player
             for i, (min_player_level, max_player_level) in enumerate(zip(self.min_player_level, self.max_player_level)):
                 assert min_player_level <= max_player_level, f"min_player_level must be less than or equal to max_player_level for each player but was {min_player_level} > {max_player_level} for player {i}"
-        
-        if isinstance(player_load_logic, Iterable):
+
+        if player_load_logic is None: 
+            self.player_load_logic = (['lt', 'eq', 'le']*players)[:players]
+        elif isinstance(player_load_logic, Iterable):
             assert len(player_load_logic) == players, "player_load_logic must be a scalar or a list of length players"
             for logic in player_load_logic:
                 assert logic in ('le', 'eq', 'lt'), "invalid input: player_load_logic must be either le (less that or equal), lt (less than) or eq (equal) but recived {0}".format(logic)
