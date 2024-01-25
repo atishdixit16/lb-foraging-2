@@ -161,7 +161,7 @@ class ForagingEnv(Env):
                 assert min_player_level <= max_player_level, f"min_player_level must be less than or equal to max_player_level for each player but was {min_player_level} > {max_player_level} for player {i}"
 
         if player_load_logic is None: 
-            self.player_load_logic = (['lt', 'eq', 'le']*players)[:players]
+            self.player_load_logic = (['le', 'eq', 'lt']*players)[:players]
         elif isinstance(player_load_logic, Iterable):
             assert len(player_load_logic) == players, "player_load_logic must be a scalar or a list of length players"
             for logic in player_load_logic:
@@ -546,12 +546,12 @@ class ForagingEnv(Env):
     def reset(self):
         self.field = np.zeros(self.field_size, np.int32)
         self.spawn_players(self.min_player_level, self.max_player_level, self.player_load_logic)
-        player_levels = sorted([player.level for player in self.players])
+        player_levels = [player.level for player in self.players]
 
         self.spawn_food(
             self.max_num_food,
             min_levels=self.min_food_level,
-            max_levels=self.max_food_level if self.max_food_level else [sum(player_levels[:3])] * self.max_num_food,
+            max_levels=self.max_food_level if self.max_food_level else [sum(player_levels[::3])] * self.max_num_food,
         )
         self.current_step = 0
         self._game_over = False
@@ -626,8 +626,6 @@ class ForagingEnv(Env):
 
         return players_copy, actions_copy
 
-
-    
     def reward_mapping_function(self, actions):
         players_copy =  deepcopy(self.players)
         actions = [ Action(a) for a in actions ]
