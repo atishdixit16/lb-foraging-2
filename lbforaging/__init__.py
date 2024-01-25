@@ -8,16 +8,17 @@ max_food_level = [None, 1]
 coop = [True, False]
 partial_obs = [True, False]
 pens = [True, False]
+diversity = [True, False]
 
-for s, p, f, mfl, c, po, pen in product(sizes, players, foods, max_food_level, coop, partial_obs, pens):
+for s, p, f, mfl, c, po, pen, div in product(sizes, players, foods, max_food_level, coop, partial_obs, pens, diversity):
     register(
-        id="Foraging{4}-{0}x{0}-{1}p-{2}f{3}{5}{6}-v2".format(s, p, f, "-coop" if c else "", "-2s" if po else "", "-ind" if mfl else "", "-pen" if pen else ""),
+        id="Foraging{4}-{0}x{0}-{1}p-{2}f{3}{5}{6}{7}-v2".format(s, p, f, "-coop" if c else "", "-2s" if po else "", "-ind" if mfl else "", "-pen" if pen else "","-div" if div else "" ),
         entry_point="lbforaging.foraging:ForagingEnv",
         kwargs={
             "players": p,
             "min_player_level": 1,
             "max_player_level": 3,
-            "player_load_logic": None,
+            "player_load_logic": None if div else "le",
             "field_size": (s, s),
             "min_food_level": 1,
             "max_food_level": None,

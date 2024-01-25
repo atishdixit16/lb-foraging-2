@@ -162,7 +162,7 @@ class ForagingEnv(Env):
 
         if player_load_logic is None: 
             self.player_load_logic = (['le', 'eq', 'lt']*players)[:players]
-        elif isinstance(player_load_logic, Iterable):
+        elif isinstance(player_load_logic, Iterable) and not isinstance(player_load_logic, str):
             assert len(player_load_logic) == players, "player_load_logic must be a scalar or a list of length players"
             for logic in player_load_logic:
                 assert logic in ('le', 'eq', 'lt'), "invalid input: player_load_logic must be either le (less that or equal), lt (less than) or eq (equal) but recived {0}".format(logic)
