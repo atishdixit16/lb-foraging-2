@@ -608,7 +608,6 @@ class ForagingEnv(Env):
 
             if self._normalize_reward:
                 player.reward = 1 / len(self.players)  # normalize reward
-            self.field[frow, fcol] = 0
 
         return [player.reward for player in players]
     
