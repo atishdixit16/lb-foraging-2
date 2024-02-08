@@ -598,6 +598,8 @@ class ForagingEnv(Env):
         # finally process the loadings:
         for player in loading_players:
             # find adjacent food
+            if not self.adjacent_food(*player.position) > 0:
+                continue
             frow, fcol = self.adjacent_food_location(*player.position)
             food = self.field[frow, fcol]
 
@@ -703,6 +705,8 @@ class ForagingEnv(Env):
         # finally process the loadings:
         for player in loading_players:
             # find adjacent food
+            if not self.adjacent_food(*player.position) > 0:
+                continue
             frow, fcol = self.adjacent_food_location(*player.position)
             food = self.field[frow, fcol]
 
