@@ -51,20 +51,24 @@ class Player:
         self.load_logic = self.get_logic_condition(load_logic)
 
     def get_logic_condition(self,load_logic):
-        if load_logic == 'le':
-            return operator.le
+        # if load_logic == 'le':
+        #     return operator.le
         if load_logic == 'lt':
             return operator.lt
         if load_logic == 'eq':
             return operator.eq
+        if load_logic == 'gt':
+            return operator.gt
         
     def get_load_logic_label(self):
-        if self.load_logic == operator.le:
-            return [1, 1]
+        # if self.load_logic == operator.le:
+        #     return [1, 1]
         if self.load_logic == operator.lt:
-            return [1, 0]
+            return [1, 0, 0]
+        if self.load_logic == operator.gt:
+            return [0, 0, 1]
         if self.load_logic == operator.eq:
-            return [0, 1]
+            return [0, 1, 0]
 
     def set_controller(self, controller):
         self.controller = controller
@@ -161,11 +165,11 @@ class ForagingEnv(Env):
                 assert min_player_level <= max_player_level, f"min_player_level must be less than or equal to max_player_level for each player but was {min_player_level} > {max_player_level} for player {i}"
 
         if player_load_logic is None: 
-            self.player_load_logic = (['le', 'eq', 'lt']*players)[:players]
+            self.player_load_logic = (['gt', 'lt', 'eq']*players)[:players]
         elif isinstance(player_load_logic, Iterable) and not isinstance(player_load_logic, str):
             assert len(player_load_logic) == players, "player_load_logic must be a scalar or a list of length players"
             for logic in player_load_logic:
-                assert logic in ('le', 'eq', 'lt'), "invalid input: player_load_logic must be either le (less that or equal), lt (less than) or eq (equal) but recived {0}".format(logic)
+                assert logic in ('gt', 'lt', 'eq'), "invalid input: player_load_logic must be either gt (more that), lt (less than) or eq (equal) but recived {0}".format(logic)
             self.player_load_logic = player_load_logic
         else:
             self.player_load_logic = [player_load_logic] * players
@@ -207,9 +211,9 @@ class ForagingEnv(Env):
 
             max_num_food = self.max_num_food
 
-            min_obs = [-1, -1, 0] * max_num_food + [-1, -1, 0, 0, 0] * len(self.players)
+            min_obs = [-1, -1, 0] * max_num_food + [-1, -1, 0, 0, 0, 0] * len(self.players)
             max_obs = [field_x-1, field_y-1, max_food_level] * max_num_food + [
-                field_x-1, field_y-1, max(self.max_player_level), 1, 1
+                field_x-1, field_y-1, max(self.max_player_level), 1, 1, 1
             ] * len(self.players)
         else:
             # grid observation space
@@ -342,7 +346,6 @@ class ForagingEnv(Env):
                 else self.np_random.randint(min_levels[food_count], max_levels[food_count] + 1)
             )
             food_count += 1
-        self._food_spawned = self.field.sum()
 
     def _is_empty_location(self, row, col):
         if self.field[row, col] != 0:
@@ -467,18 +470,20 @@ class ForagingEnv(Env):
                 obs[3 * i + 2] = observation.field[y, x]
 
             for i in range(len(self.players)):
-                obs[self.max_num_food * 3 + 5 * i] = -1
-                obs[self.max_num_food * 3 + 5 * i + 1] = -1
-                obs[self.max_num_food * 3 + 5 * i + 2] = 0
-                obs[self.max_num_food * 3 + 5 * i + 3] = 0
-                obs[self.max_num_food * 3 + 5 * i + 4] = 0
+                obs[self.max_num_food * 3 + 6 * i] = -1
+                obs[self.max_num_food * 3 + 6 * i + 1] = -1
+                obs[self.max_num_food * 3 + 6 * i + 2] = 0
+                obs[self.max_num_food * 3 + 6 * i + 3] = 0
+                obs[self.max_num_food * 3 + 6 * i + 4] = 0
+                obs[self.max_num_food * 3 + 6 * i + 5] = 0
 
             for i, p in enumerate(seen_players):
-                obs[self.max_num_food * 3 + 5 * i] = p.position[0]
-                obs[self.max_num_food * 3 + 5 * i + 1] = p.position[1]
-                obs[self.max_num_food * 3 + 5 * i + 2] = p.level
-                obs[self.max_num_food * 3 + 5 * i + 3] = p.load_logic_label[0]
-                obs[self.max_num_food * 3 + 5 * i + 4] = p.load_logic_label[1]
+                obs[self.max_num_food * 3 + 6 * i] = p.position[0]
+                obs[self.max_num_food * 3 + 6 * i + 1] = p.position[1]
+                obs[self.max_num_food * 3 + 6 * i + 2] = p.level
+                obs[self.max_num_food * 3 + 6 * i + 3] = p.load_logic_label[0]
+                obs[self.max_num_food * 3 + 6 * i + 4] = p.load_logic_label[1]
+                obs[self.max_num_food * 3 + 6 * i + 4] = p.load_logic_label[2]
 
             return obs
 
@@ -542,17 +547,35 @@ class ForagingEnv(Env):
                 f"obs space error: obs: {obs}, obs_space: {self.observation_space[i]}"
         
         return nobs, nreward, ndone, ninfo
+    
+    def spawn_food_levels(self):
+        for logic in ['lt', 'gt', 'eq']:
+            food_count = self.player_load_logic.count(logic)
+            if logic=='gt':
+                self.spawn_food(
+                    food_count,
+                    min_levels=[self.max_player_level[0]+1]*food_count,
+                    max_levels=[self.max_player_level[0]+3]*food_count,
+                )
+            if logic=='lt':
+                self.spawn_food(
+                    food_count,
+                    min_levels=[self.min_player_level[0]-3]*food_count,
+                    max_levels=[self.min_player_level[0]-1]*food_count,
+                )
+            if logic=='eq':
+                self.spawn_food(
+                    food_count,
+                    min_levels=[self.min_player_level[0]]*food_count,
+                    max_levels=[self.max_player_level[0]]*food_count,
+                )
+        self._food_spawned = self.field.sum()
 
     def reset(self):
         self.field = np.zeros(self.field_size, np.int32)
         self.spawn_players(self.min_player_level, self.max_player_level, self.player_load_logic)
-        player_levels = [player.level for player in self.players]
+        self.spawn_food_levels()
 
-        self.spawn_food(
-            self.max_num_food,
-            min_levels=self.min_food_level,
-            max_levels=self.max_food_level if self.max_food_level else [max(player_levels)] * self.max_num_food,
-        )
         self.current_step = 0
         self._game_over = False
         self._gen_valid_moves()
@@ -566,55 +589,26 @@ class ForagingEnv(Env):
             p.reward = 0
 
         # process the loadings and compute rewards:
-        loading_players = set()
+        loading_players = []
 
         for player, action in zip(players, actions):
             if action == Action.LOAD:
-                loading_players.add(player)
+                loading_players.append(player)
 
-        
-        while loading_players:
+        # finally process the loadings:
+        for player in loading_players:
             # find adjacent food
-            player = loading_players.pop()
             frow, fcol = self.adjacent_food_location(*player.position)
             food = self.field[frow, fcol]
 
-            adj_players = [ player for player in players
-                           if abs(player.position[0] - frow) == 1 and 
-                           player.position[1] == fcol or 
-                           abs(player.position[1] - fcol) == 1 and 
-                           player.position[0] == frow ]
-
-            # choose the adjacent players that are loading and follow same load logic (to get adj_player_level)
-            adj_players_logic = [
-                p for p in adj_players if (p in loading_players and p.load_logic == player.load_logic ) or p is player
-            ]
-
-            adj_player_level = sum([a.level for a in adj_players_logic])
-
-
-            if not player.load_logic(food,adj_player_level):
+            if not player.load_logic(food,player.level):
                 # failed to load
-                for a in adj_players_logic:
-                    a.reward -= self.penalty
-                
-                # remove loading players with same logic
-                loading_players = loading_players - set(adj_players_logic)
+                player.reward -= self.penalty
                 continue
 
-            # else the food was loaded and each player scores points
-            for a in adj_players_logic:
-                a.reward = float(a.level * food)
-                if self._normalize_reward:
-                    a.reward = a.reward / float(
-                        adj_player_level * self._food_spawned
-                    )  # normalize reward
-            
-            # remove all adjacent players that do not follow the same load logic
-            adj_players_all = [
-                p for p in adj_players if p in loading_players or p is player
-            ]
-            loading_players = loading_players - set(adj_players_all)
+            if self._normalize_reward:
+                player.reward = 1 / len(self.players)  # normalize reward
+            self.field[frow, fcol] = 0
 
         return [player.reward for player in players]
     
@@ -678,7 +672,7 @@ class ForagingEnv(Env):
                 )
                 actions[i] = Action.NONE
 
-        loading_players = set()
+        loading_players = []
 
         # move players
         # if two or more players try to move to the same location they all fail
@@ -698,7 +692,7 @@ class ForagingEnv(Env):
                 collisions[(player.position[0], player.position[1] + 1)].append(player)
             elif action == Action.LOAD:
                 collisions[player.position].append(player)
-                loading_players.add(player)
+                loading_players.append(player)
 
         # and do movements for non colliding players
 
@@ -708,46 +702,19 @@ class ForagingEnv(Env):
             v[0].position = k
 
         # finally process the loadings:
-        while loading_players:
+        for player in loading_players:
             # find adjacent food
-            player = loading_players.pop()
             frow, fcol = self.adjacent_food_location(*player.position)
             food = self.field[frow, fcol]
 
-            adj_players = self.adjacent_players(frow, fcol)
-
-            # choose the adjacent players that are loading and follow same load logic (to get adj_player_level)
-            adj_players_logic = [
-                p for p in adj_players if (p in loading_players and p.load_logic == player.load_logic ) or p is player
-            ]
-
-            adj_player_level = sum([a.level for a in adj_players_logic])
-
-
-            if not player.load_logic(food,adj_player_level):
+            if not player.load_logic(food,player.level):
                 # failed to load
-                for a in adj_players_logic:
-                    a.reward -= self.penalty
-                
-                # remove loading players with same logic
-                loading_players = loading_players - set(adj_players_logic)
+                player.reward -= self.penalty
                 continue
 
-            # else the food was loaded and each player scores points
-            for a in adj_players_logic:
-                a.reward = float(a.level * food)
-                if self._normalize_reward:
-                    a.reward = a.reward / float(
-                        adj_player_level * self._food_spawned
-                    )  # normalize reward
-            # and the food is removed
+            if self._normalize_reward:
+                player.reward = 1 / len(self.players)  # normalize reward
             self.field[frow, fcol] = 0
-            
-            # remove all adjacent players that do not follow the same load logic
-            adj_players_all = [
-                p for p in adj_players if p in loading_players or p is player
-            ]
-            loading_players = loading_players - set(adj_players_all)
 
         self._game_over = (
             self.field.sum() == 0 or self._max_episode_steps <= self.current_step

@@ -255,8 +255,8 @@ class Viewer(object):
         badge_x = col * (self.grid_size + 1) + (1 / 4) * (self.grid_size + 1)
         badge_y = self.height - (self.grid_size + 1) * (row + 1) + (1 / 4) * (self.grid_size + 1)
 
-        if load_logic==operator.le:
-            label_str = '≤'
+        if load_logic==operator.gt:
+            label_str = '>'
         elif load_logic==operator.lt:
             label_str = '<'
         else:

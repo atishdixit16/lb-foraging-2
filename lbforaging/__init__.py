@@ -16,8 +16,8 @@ for s, p, f, mfl, c, po, pen, div in product(sizes, players, foods, max_food_lev
         entry_point="lbforaging.foraging:ForagingEnv",
         kwargs={
             "players": p,
-            "min_player_level": 1,
-            "max_player_level": 3,
+            "min_player_level": 4,
+            "max_player_level": 4,
             "player_load_logic": None if div else "le",
             "field_size": (s, s),
             "min_food_level": 1,
