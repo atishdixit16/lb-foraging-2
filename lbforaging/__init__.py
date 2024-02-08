@@ -18,7 +18,7 @@ for s, p, f, mfl, c, po, pen, div in product(sizes, players, foods, max_food_lev
             "players": p,
             "min_player_level": 4,
             "max_player_level": 4,
-            "player_load_logic": None if div else "le",
+            "player_load_logic": None if div else "lt",
             "field_size": (s, s),
             "min_food_level": 1,
             "max_food_level": None,
