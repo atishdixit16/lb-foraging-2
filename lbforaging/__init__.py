@@ -12,7 +12,7 @@ diversity = [True, False]
 
 for s, p, f, mfl, c, po, pen, div in product(sizes, players, foods, max_food_level, coop, partial_obs, pens, diversity):
     register(
-        id="Foraging{4}-{0}x{0}-{1}p-{2}f{3}{5}{6}{7}-v2".format(s, p, f, "-coop" if c else "", "-2s" if po else "", "-ind" if mfl else "", "-pen" if pen else "","-div" if div else "" ),
+        id="Foraging{4}-{0}x{0}-{1}p-{2}f{3}{5}{6}{7}-v3".format(s, p, f, "-coop" if c else "", "-2s" if po else "", "-ind" if mfl else "", "-pen" if pen else "","-div" if div else "" ),
         entry_point="lbforaging.foraging:ForagingEnv",
         kwargs={
             "players": p,
